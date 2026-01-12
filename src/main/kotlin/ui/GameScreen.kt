@@ -4,8 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
@@ -156,15 +158,20 @@ data class BranchSpec(
 )
 
 @Composable
-fun GameScreen(engine: GameEngine) {
+fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Unit) {
     var started by remember { mutableStateOf(false) }
     var gameOver by remember { mutableStateOf(false) }
+    var gameWon by remember { mutableStateOf(false) }
+    var skinChanged by remember { mutableStateOf(false) }
 
     // --- Bird sprites ---
     val birdRight = painterResource("images/ptashka_right.svg")
     val birdLeft = painterResource("images/ptashka_left.svg")
     val birdFlyLeft = painterResource("images/ptashka_fly_left.svg")
     val birdFlyRight = painterResource("images/ptashka_fly_right.svg")
+
+    //kkk spr
+    val kkk = painterResource("images/derevco.svg")
 
     // --- Decor tree (SVG) ---
     val derevco = painterResource("images/derevco.svg")
@@ -179,12 +186,12 @@ fun GameScreen(engine: GameEngine) {
     val branch7 = painterResource("images/branch7.svg")
     val branch8 = painterResource("images/branch8.svg")
     val branch9 = painterResource("images/branch9.svg")
-    val branch10 = painterResource("images/branch10m.svg")
+    val branch10 = painterResource("images/branch10.svg")
     val branch11 = painterResource("images/branch11.svg")
     val branch12 = painterResource("images/branch12.svg")
     val branch13 = painterResource("images/branch13.svg")
 
-    // --- Backgrounds (НЕ ЧІПАЮ) ---
+    // --- Backgrounds
     val backgrounds = listOf(
         painterResource("images/game_background.svg"),
         painterResource("images/game_background.svg"),
@@ -194,7 +201,7 @@ fun GameScreen(engine: GameEngine) {
         painterResource("images/game_background5.svg"),
     )
 
-    // --- Layouts (твій варіант) ---
+    // --- Layouts ---
     val layoutLevel1 = listOf(
         BranchSpawn(XAnchor.RIGHT, 0.08f, kind = 0),
         BranchSpawn(XAnchor.LEFT,  0.30f, kind = 1),
@@ -223,7 +230,7 @@ fun GameScreen(engine: GameEngine) {
     val layouts = listOf(layoutLevel1, layoutLevel2, layoutLevel3, layoutLevel4)
 
     fun layoutForLevel(level: Int): List<BranchSpawn> {
-        if (level <= 0) return emptyList()
+        if (level <= 0 || level >= 5   ) return emptyList()
         return layouts[(level - 1) % layouts.size]
     }
 
@@ -241,7 +248,7 @@ fun GameScreen(engine: GameEngine) {
     val birdSizePx = with(density) { birdSizeDp.toPx() }
     val birdSizePxInt = birdSizePx.roundToInt().coerceAtLeast(1)
 
-    // ✅ BASE size for most branches (your old values)
+    // ✅ BASE size for most branches
     val baseBranchWdp = 240.dp
     val baseBranchHdp = 100.dp
 
@@ -344,7 +351,7 @@ fun GameScreen(engine: GameEngine) {
     // --- Floor in world ---
     val groundWorldY by remember { derivedStateOf { screenH - 80f } }
 
-    // --- Tree in world (як було) ---
+    // --- Tree in world ---
     val treeWorldX = 0f
     val treeWorldY by remember { derivedStateOf { groundWorldY - treeHPx } }
 
@@ -434,6 +441,11 @@ fun GameScreen(engine: GameEngine) {
 
             val tileH = screenH.coerceAtLeast(1f)
             val topVisibleLevel = -floor(cameraY / tileH).toInt()
+            // Якщо гравець піднявся до 5 рівня — він переміг
+            if (topVisibleLevel >= 6) {
+                gameWon = true
+                started = false
+            }
 
             for (lvl in listOf(topVisibleLevel, topVisibleLevel + 1)) {
                 if (lvl >= 1 && spawnedTiles.add(lvl)) {
@@ -649,12 +661,6 @@ fun GameScreen(engine: GameEngine) {
             )
         }
 
-        // PLAY / RESTART / BIRD (у тебе нижче було — залишаєш як є)
-        // ...
-
-
-
-
 // =====================================================
         // PLAY / RESTART
         // =====================================================
@@ -684,8 +690,50 @@ fun GameScreen(engine: GameEngine) {
                 },
                 colors = ButtonDefaults.buttonColors(backgroundColor = buttonColor),
                 shape = RoundedCornerShape(24.dp),
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp)
             ) { Text("Play", color = Color.White) }
+        }
+        // =====================================================
+        // SKINS
+        // =====================================================
+        if(!started){
+            Button(
+                onClick = {
+                    skinChanged = !skinChanged
+                },
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(buttonColor),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 60.dp)
+                    .size(45.dp),
+            ){
+                Image(
+                    painterResource("images/icon_of_skins.svg"),
+                    contentDescription = null,
+                    Modifier.size(30.dp)
+                )
+            }
+            // =====================================================
+            // MUSIC
+            // =====================================================
+            Button(
+                onClick = onMusicClick,
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(buttonColor),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 20.dp, bottom = 60.dp)
+                    .size(45.dp),
+            ) {
+                Image(
+                    painterResource("images/music_icon.svg"),
+                    contentDescription = null,
+                    Modifier.size(25.dp)
+                )
+            }
         }
 
         if (gameOver) {
@@ -717,6 +765,36 @@ fun GameScreen(engine: GameEngine) {
                 modifier = Modifier.align(Alignment.Center)
             ) { Text("Restart", color = Color.White) }
         }
+        // =====================================================
+// WIN SCREEN
+// =====================================================
+        if (gameWon) {
+            Button(
+                onClick = {
+                    // Скидаємо все для нової гри
+                    gameWon = false
+                    started = true
+                    gameOver = false
+                    birdX = screenW / 2f
+                    birdWorldY = screenH * 0.65f
+                    cameraY = 0f
+                    speedX = 0f
+                    speedY = 0f
+                    flyFrames = 0
+                    facingLeft = false
+                    obstacles = emptyList()
+                    nextObstacleId = 1
+                    spawnedTiles.clear()
+                    recomputeBirdScreenY()
+                    focusRequester.requestFocus()
+                },
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF4CAF50)), // Зелений для перемоги
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+                Text("You Win! Play Again", color = Color.White)
+            }
+        }
 
         // =====================================================
         // BIRD
@@ -732,14 +810,27 @@ fun GameScreen(engine: GameEngine) {
                 else -> birdRight
             }
 
-            Image(
-                painter = birdPainter,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(birdSizeDp)
-                    .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
-                contentScale = ContentScale.FillBounds
-            )
+            if (!skinChanged) {
+                Image(
+                    painter = birdPainter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(birdSizeDp)
+                        .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
+                    contentScale = ContentScale.FillBounds
+                )
+            }
+            else {
+                Image(
+                    painter = kkk,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(birdSizeDp)
+                        .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
+                    contentScale = ContentScale.FillBounds
+                )
+            }
         }
     }
 }
+
