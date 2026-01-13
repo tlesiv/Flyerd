@@ -1,8 +1,11 @@
 package ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
@@ -148,7 +151,7 @@ data class BranchSpec(
 )
 
 @Composable
-fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Unit) {
+fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Unit, onTreeDoubleClick: () -> Unit) {
     var started by remember { mutableStateOf(false) }
     var gameOver by remember { mutableStateOf(false) }
     var gameWon by remember { mutableStateOf(false) }
@@ -186,8 +189,15 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         painterResource("images/game_background.svg"),
         painterResource("images/game_background.svg"),
         painterResource("images/game_background.svg"),
-        painterResource("images/game_background5.svg"),
-        painterResource("images/game_background5.svg"),
+        painterResource("images/game_background2.svg"),
+        painterResource("images/game_background2.svg"),
+        painterResource("images/game_background2.svg"),
+        //
+        painterResource("images/game_background3.svg"),
+        painterResource("images/game_background4.svg"),
+        painterResource("images/game_background4.svg"),
+        painterResource("images/game_background4.svg"),
+        painterResource("images/game_background4.svg"),
         painterResource("images/game_background5.svg"),
     )
 
@@ -396,7 +406,22 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     LaunchedEffect(started) {
         if (!started) return@LaunchedEffect
 
+        var lastNanos = 0L
+
         while (started) {
+            val frameNanos = withFrameNanos { it }
+            if (lastNanos == 0L) {
+                lastNanos = frameNanos
+                continue
+            }
+            var dt = (frameNanos - lastNanos) / 1_000_000_000f
+            lastNanos = frameNanos
+
+            // важливо: коли alt-tab/лаги — dt може стати 0.2с і все "стрибає"
+            dt = dt.coerceIn(0f, 0.05f) // максимум 50мс за тик
+
+            engine.tick(dt)
+
             if (flyFrames > 0) flyFrames--
 
             speedY += gravity * secondsPerFrame
@@ -432,7 +457,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
             val tileH = screenH.coerceAtLeast(1f)
             val topVisibleLevel = -floor(cameraY / tileH).toInt()
             // Якщо гравець піднявся до 5 рівня — він переміг
-            if (topVisibleLevel >= 6) {
+            if (topVisibleLevel >= 11) {
                 gameWon = true
                 started = false
             }
@@ -634,8 +659,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 alignment = Alignment.BottomCenter
             )
         }
-
-        // TREE (як було)
+        // TREE
+        @OptIn(ExperimentalFoundationApi::class)
         run {
             val treeScreenY = treeWorldY - cameraY
             if (treeScreenY < screenH + 200f && treeScreenY + treeHPx > -200f) {
@@ -644,7 +669,17 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     contentDescription = null,
                     modifier = Modifier
                         .offset { IntOffset(treeWorldX.roundToInt(), treeScreenY.roundToInt()) }
-                        .size(treeWdp, treeHdp),
+                        .size(treeWdp, treeHdp)
+                        .combinedClickable(
+                            // 1. Створюємо джерело взаємодії без візуалізації
+                            interactionSource = remember { MutableInteractionSource() },
+                            // 2. Вказуємо null, щоб прибрати ефект підсвічування (ripple)
+                            indication = null,
+                            onClick = {},
+                            onDoubleClick = {
+                                onTreeDoubleClick()
+                            }
+                        ),
                     contentScale = ContentScale.FillBounds
                 )
             }
