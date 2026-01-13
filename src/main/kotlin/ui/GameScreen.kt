@@ -3,12 +3,7 @@ package ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -25,12 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -204,33 +194,33 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     // --- Layouts ---
     val layoutLevel1 = listOf(
         BranchSpawn(XAnchor.RIGHT, 0.08f, kind = 0),
-        BranchSpawn(XAnchor.LEFT,  0.30f, kind = 1),
+        BranchSpawn(XAnchor.LEFT, 0.30f, kind = 1),
         BranchSpawn(XAnchor.RIGHT, 0.55f, kind = 2),
-        BranchSpawn(XAnchor.LEFT,  0.73f, kind = 3)
+        BranchSpawn(XAnchor.LEFT, 0.73f, kind = 3)
     )
 
     val layoutLevel2 = listOf(
         BranchSpawn(XAnchor.RIGHT, 0.29f, kind = 5),
-        BranchSpawn(XAnchor.LEFT,  0.44f, kind = 4)
+        BranchSpawn(XAnchor.LEFT, 0.44f, kind = 4)
     )
 
     val layoutLevel3 = listOf(
         BranchSpawn(XAnchor.RIGHT, 0.22f, kind = 12),
-        BranchSpawn(XAnchor.LEFT,  0.35f, kind = 11),
-        BranchSpawn(XAnchor.LEFT,  0.68f, kind = 10)
+        BranchSpawn(XAnchor.LEFT, 0.35f, kind = 11),
+        BranchSpawn(XAnchor.LEFT, 0.68f, kind = 10)
     )
 
     val layoutLevel4 = listOf(
         BranchSpawn(XAnchor.RIGHT, 0.04f, kind = 8),
-        BranchSpawn(XAnchor.LEFT,  0.20f, kind = 9),
-        BranchSpawn(XAnchor.LEFT,  0.55f, kind = 7),
+        BranchSpawn(XAnchor.LEFT, 0.20f, kind = 9),
+        BranchSpawn(XAnchor.LEFT, 0.55f, kind = 7),
         BranchSpawn(XAnchor.RIGHT, 0.60f, kind = 6)
     )
 
     val layouts = listOf(layoutLevel1, layoutLevel2, layoutLevel3, layoutLevel4)
 
     fun layoutForLevel(level: Int): List<BranchSpawn> {
-        if (level <= 0 || level >= 5   ) return emptyList()
+        if (level <= 0 || level >= 5) return emptyList()
         return layouts[(level - 1) % layouts.size]
     }
 
@@ -525,19 +515,35 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 when (e.type) {
                     KeyEventType.KeyDown -> when {
                         isLeftKey -> {
-                            if (!leftHeld) { leftHeld = true; jumpTo(-1) } else { leftHeld = true; applySpeedFromHeld() }
+                            if (!leftHeld) {
+                                leftHeld = true; jumpTo(-1)
+                            } else {
+                                leftHeld = true; applySpeedFromHeld()
+                            }
                             true
                         }
+
                         isRightKey -> {
-                            if (!rightHeld) { rightHeld = true; jumpTo(+1) } else { rightHeld = true; applySpeedFromHeld() }
+                            if (!rightHeld) {
+                                rightHeld = true; jumpTo(+1)
+                            } else {
+                                rightHeld = true; applySpeedFromHeld()
+                            }
                             true
                         }
+
                         else -> false
                     }
 
                     KeyEventType.KeyUp -> when {
-                        isLeftKey -> { leftHeld = false; applySpeedFromHeld(); true }
-                        isRightKey -> { rightHeld = false; applySpeedFromHeld(); true }
+                        isLeftKey -> {
+                            leftHeld = false; applySpeedFromHeld(); true
+                        }
+
+                        isRightKey -> {
+                            rightHeld = false; applySpeedFromHeld(); true
+                        }
+
                         else -> false
                     }
 
@@ -547,7 +553,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
             .focusable()
     ) {
         // =====================================================
-        // BACKGROUND (ТВІЙ, НЕ ЧІПАЮ)
+        // BACKGROUND
         // =====================================================
         if (backgrounds.isNotEmpty()) {
             val tileH = screenH.coerceAtLeast(1f)
@@ -696,7 +702,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         // =====================================================
         // SKINS
         // =====================================================
-        if(!started){
+        if (!started) {
             Button(
                 onClick = {
                     skinChanged = !skinChanged
@@ -708,12 +714,18 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 60.dp)
                     .size(45.dp),
-            ){
+            ) {
                 Image(
                     painterResource("images/icon_of_skins.svg"),
                     contentDescription = null,
-                    Modifier.size(30.dp)
+                    Modifier.size(35.dp).padding(end = 2.dp)
                 )
+            }
+
+            val musicIcon = if(!musicEnabled) {
+                painterResource("/images/music_icon_off.svg")
+            }else {
+                painterResource("/images/music_icon.svg")
             }
             // =====================================================
             // MUSIC
@@ -729,9 +741,9 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     .size(45.dp),
             ) {
                 Image(
-                    painterResource("images/music_icon.svg"),
+                    painter = musicIcon,
                     contentDescription = null,
-                    Modifier.size(25.dp)
+                    Modifier.size(28.dp)
                 )
             }
         }
@@ -766,8 +778,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
             ) { Text("Restart", color = Color.White) }
         }
         // =====================================================
-// WIN SCREEN
-// =====================================================
+        // WIN SCREEN
+        // =====================================================
         if (gameWon) {
             Button(
                 onClick = {
@@ -819,8 +831,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                         .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
                     contentScale = ContentScale.FillBounds
                 )
-            }
-            else {
+            } else {
                 Image(
                     painter = kkk,
                     contentDescription = null,
