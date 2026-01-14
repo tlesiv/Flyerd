@@ -1,6 +1,7 @@
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
+import game.AppSettings
 import game.BackgroundMusic
 import game.GameEngine
 import kotlinx.coroutines.delay
@@ -10,14 +11,20 @@ fun main() = application {
     val engine = remember { GameEngine() }
     val windowState = rememberWindowState(width = 500.dp, height = 650.dp)
 
-    var currentMusicIndex by remember { mutableStateOf(0) }
-    var musicEnabled by remember { mutableStateOf(true) }
+    var currentMusicIndex by remember { mutableStateOf(AppSettings.loadMusicIndex(0)) }
+    var musicEnabled by remember { mutableStateOf(AppSettings.loadMusicEnabled(true)) }
 
     val music1 = remember { BackgroundMusic("/music/testSong.wav") }
     val music2 = remember { BackgroundMusic("/music/smaragdoveNebo.wav") }
 
     var musicReady by remember { mutableStateOf(false) }
 
+    LaunchedEffect(musicEnabled) {
+        AppSettings.saveMusicEnabled(musicEnabled)
+    }
+    LaunchedEffect(currentMusicIndex) {
+        AppSettings.saveMusicIndex(currentMusicIndex)
+    }
     LaunchedEffect(Unit) {
         delay(500)
         musicReady = true
@@ -32,6 +39,7 @@ fun main() = application {
         music2.pause()
 
         if (musicEnabled) {
+           // AppSettings.saveMusicEnabled(musicEnabled)
             if (currentMusicIndex == 0) music1.play() else music2.play()
         }
     }
