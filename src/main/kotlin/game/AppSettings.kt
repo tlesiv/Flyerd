@@ -6,6 +6,7 @@ object AppSettings {
     private val prefs = Preferences.userRoot().node("Flyerd") // назва гри
     private const val KEY_MUSIC_ENABLED = "musicEnabled"
     private const val KEY_MUSIC_INDEX = "currentMusicIndex"
+    private const val KEY_SKIN_INDEX = "skinChanged"
 
     fun loadMusicEnabled(default: Boolean = true): Boolean =
         prefs.getBoolean(KEY_MUSIC_ENABLED, default)
@@ -19,6 +20,14 @@ object AppSettings {
 
     fun saveMusicIndex(value: Int) {
         prefs.putInt(KEY_MUSIC_INDEX, value)
+        runCatching { prefs.flush() }
+    }
+
+    fun loadSkinIndex(default: Int = 0): Int =
+        prefs.getInt(KEY_SKIN_INDEX, default)
+
+    fun saveSkinIndex(value: Int) {
+        prefs.putInt(KEY_SKIN_INDEX, value)
         runCatching { prefs.flush() }
     }
 

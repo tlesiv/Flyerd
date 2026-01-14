@@ -11,43 +11,53 @@ fun main() = application {
     val engine = remember { GameEngine() }
     val windowState = rememberWindowState(width = 500.dp, height = 650.dp)
 
-    var currentMusicIndex by remember { mutableStateOf(AppSettings.loadMusicIndex(0)) }
-    var musicEnabled by remember { mutableStateOf(AppSettings.loadMusicEnabled(true)) }
+    val tracks = remember {
+        listOf(
+            BackgroundMusic("/music/testSong.wav"),
+            BackgroundMusic("/music/smaragdoveNebo.wav"),
+            BackgroundMusic("/music/vanya.wav"),
+        )
+    }
 
-    val music1 = remember { BackgroundMusic("/music/testSong.wav") }
-    val music2 = remember { BackgroundMusic("/music/smaragdoveNebo.wav") }
+    var musicEnabled by remember { mutableStateOf(AppSettings.loadMusicEnabled(true)) }
+    var musicIndex by remember {
+        mutableStateOf(AppSettings.loadMusicIndex(0).coerceIn(0, tracks.lastIndex))
+    }
+
+    // ✅ зберігаємо налаштування
+    LaunchedEffect(musicEnabled) { AppSettings.saveMusicEnabled(musicEnabled) }
+    LaunchedEffect(musicIndex) { AppSettings.saveMusicIndex(musicIndex) }
+
+    // --- SKINS ---
+    val skinsCount = 2
+    var skinIndex by remember {
+        mutableStateOf(AppSettings.loadSkinIndex(0).coerceIn(0, skinsCount - 1))
+    }
+    LaunchedEffect(skinIndex) { AppSettings.saveSkinIndex(skinIndex) }
 
     var musicReady by remember { mutableStateOf(false) }
-
-    LaunchedEffect(musicEnabled) {
-        AppSettings.saveMusicEnabled(musicEnabled)
-    }
-    LaunchedEffect(currentMusicIndex) {
-        AppSettings.saveMusicIndex(currentMusicIndex)
-    }
     LaunchedEffect(Unit) {
         delay(500)
         musicReady = true
     }
 
-    // 3. Логіка перемикання: реагує на готовність, стан ввімкнення ТА зміну індексу треку
-    LaunchedEffect(musicReady, musicEnabled, currentMusicIndex) {
+    // ✅ керуємо програванням ТІЛЬКИ тут
+    LaunchedEffect(musicReady, musicEnabled, musicIndex) {
         if (!musicReady) return@LaunchedEffect
 
-        // Спочатку зупиняємо обидва треки, щоб вони не грали одночасно
-        music1.pause()
-        music2.pause()
+        // стоп усіх
+        tracks.forEach { it.pause() }
 
-        if (musicEnabled) {
-           // AppSettings.saveMusicEnabled(musicEnabled)
-            if (currentMusicIndex == 0) music1.play() else music2.play()
-        }
+        // якщо вимкнено — нічого не грає
+        if (!musicEnabled) return@LaunchedEffect
+
+        // грає вибраний
+        tracks[musicIndex].play()
     }
 
     Window(
         onCloseRequest = {
-            music1.pause()
-            music2.pause()
+            tracks.forEach { it.pause() }
             exitApplication()
         },
         title = "Flyerd",
@@ -56,11 +66,15 @@ fun main() = application {
     ) {
         GameScreen(
             engine = engine,
+
+            // музика
             musicEnabled = musicEnabled,
             onMusicClick = { musicEnabled = !musicEnabled },
-            onTreeDoubleClick = {
-                currentMusicIndex = if (currentMusicIndex == 0) 1 else 0
-            }
+            onTreeDoubleClick = { musicIndex = (musicIndex + 1) % tracks.size },
+
+            // скіни (поки просто “наступний”)
+            skinIndex = skinIndex,
+            onSkinClick = { skinIndex = (skinIndex + 1) % skinsCount }
         )
     }
 }

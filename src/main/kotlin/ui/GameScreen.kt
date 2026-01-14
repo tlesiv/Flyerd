@@ -151,7 +151,12 @@ data class BranchSpec(
 )
 
 @Composable
-fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Unit, onTreeDoubleClick: () -> Unit) {
+fun GameScreen(engine: GameEngine,
+               musicEnabled: Boolean,
+               onMusicClick: () -> Unit,
+               onTreeDoubleClick: () -> Unit,
+               skinIndex: Int,
+               onSkinClick: () -> Unit) {
     var started by remember { mutableStateOf(false) }
     var gameOver by remember { mutableStateOf(false) }
     var gameWon by remember { mutableStateOf(false) }
@@ -702,7 +707,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
             )
         }
 
-// =====================================================
+        // =====================================================
         // PLAY / RESTART
         // =====================================================
         if (!started && !gameOver) {
@@ -739,9 +744,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         // =====================================================
         if (!started) {
             Button(
-                onClick = {
-                    skinChanged = !skinChanged
-                },
+                onClick = onSkinClick,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(buttonColor),
                 shape = RoundedCornerShape(24.dp),
@@ -856,26 +859,21 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 !useFly && facingLeft -> birdLeft
                 else -> birdRight
             }
-
-            if (!skinChanged) {
-                Image(
-                    painter = birdPainter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(birdSizeDp)
-                        .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
-                    contentScale = ContentScale.FillBounds
-                )
-            } else {
-                Image(
-                    painter = kkk,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(birdSizeDp)
-                        .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
-                    contentScale = ContentScale.FillBounds
-                )
+            val painterToDraw = when (skinIndex) {
+                0 -> birdPainter
+                1 -> kkk
+                // 2 -> painterResource("images/another_skin.svg")
+                else -> birdPainter
             }
+                Image(
+                    painter = painterToDraw,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(birdSizeDp)
+                        .offset { IntOffset(birdX.roundToInt(), birdScreenY.roundToInt()) },
+                    contentScale = ContentScale.FillBounds
+                )
+
         }
     }
 }
