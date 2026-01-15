@@ -1,4 +1,5 @@
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import game.AppSettings
@@ -29,7 +30,7 @@ fun main() = application {
     LaunchedEffect(musicIndex) { AppSettings.saveMusicIndex(musicIndex) }
 
     // --- SKINS ---
-    val skinsCount = 2
+    val skinsCount = 3
     var skinIndex by remember {
         mutableStateOf(AppSettings.loadSkinIndex(0).coerceIn(0, skinsCount - 1))
     }
@@ -61,6 +62,7 @@ fun main() = application {
             exitApplication()
         },
         title = "Flyerd",
+        icon = painterResource("/images/logo.svg"),
         resizable = false,
         state = windowState
     ) {
