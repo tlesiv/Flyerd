@@ -1,5 +1,8 @@
 package ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas as ComposeCanvas
@@ -199,6 +202,12 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     var lightningPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
     var cloudVisible by remember { mutableStateOf(false) }
+    var cloudAlphaTarget by remember { mutableStateOf(0f) }
+    val cloudAlpha by animateFloatAsState(
+        targetValue = cloudAlphaTarget,
+        animationSpec = tween(durationMillis = 700),
+        label = "cloudAlpha"
+    )
     var cutsceneCamFromY by remember { mutableStateOf(0f) }
     var cutsceneCamToY by remember { mutableStateOf(0f) }
 
@@ -226,7 +235,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     val branch12 = painterResource("images/branch12.svg")
     val branch13 = painterResource("images/branch13.svg")
 
-    val blackCloud = painterResource("images/blackCloud.svg")
+    val blackCloud = painterResource("images/black_cloud.svg")
 
     // --- Backgrounds
     val backgrounds = listOf(
@@ -485,6 +494,20 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
     val focusRequester = remember { FocusRequester() }
 
+    // -------------------------------------------------
+    // Cloud fade AFTER background switch (stormApplied=true)
+    // -------------------------------------------------
+    LaunchedEffect(stormApplied) {
+        if (!stormApplied) return@LaunchedEffect
+        // 0.5s після кросфейду фону
+        delay(500)
+        // запускаємо плавне згасання (бо alpha прив'язана до animateFloatAsState)
+        cloudAlphaTarget = 0f
+        // дочекайся завершення tween(700), і тоді прибираємо з дерева
+        delay(750)
+        cloudVisible = false
+    }
+
     // =====================================================
     // Physics loop
     // =====================================================
@@ -514,19 +537,22 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
             // Тригер: коли ми вже дійшли до рівня з background3
             // (і пташка достатньо високо в цьому "тайлі")
             if (!stormCutsceneDone && stormPhase == StormPhase.NONE && currentLevel == stormLevelIndex) {
-                val triggerWorldY = (-stormLevelIndex * tileH) + tileH * 0.55f
+                val triggerWorldY = (-stormLevelIndex * tileH) + tileH * 0.55f //(0 = самий верх тайлу, 1 = самий низ)
                 if (birdWorldY <= triggerWorldY) {
                     stormPhase = StormPhase.PAN_UP_TO_CLOUD
                     stormPhaseTime = 0f
 
                     cloudVisible = true
+                    cloudAlphaTarget = 1f
 
                     // запам'ятовуємо позицію камери, щоб потім повернутись
                     cutsceneCamFromY = cameraY
 
                     // хмару ставимо ближче до верху цього рівня
-                    val cloudWorldY = (-stormLevelIndex * tileH) + tileH * 0.18f
-                    val desiredCloudScreenY = 110f
+                    val cloudWorldY = (-stormLevelIndex * tileH) + tileH * 0.28f//Де стоїть хмара по висоті
+                    val desiredCloudScreenY = 110f//На яку позицію на екрані камера “цілиться” при під’їзді
+                    //Менше число → камера підніме хмару вище (ближче до верху екрану).
+                    //Більше число → хмара буде нижче.
 
                     // щоб під час панорами ми не перескочили на наступний "рівень" (щоб не змінився topLevel)
                     val camMin = (-stormLevelIndex * tileH)
@@ -554,7 +580,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
                 when (stormPhase) {
                     StormPhase.PAN_UP_TO_CLOUD -> {
-                        val dur = 1.10f
+                        val dur = 1.10f//панорама вверх
                         val t = (stormPhaseTime / dur).coerceIn(0f, 1f)
                         cameraY = lerp(cutsceneCamFromY, cutsceneCamToY, smoothStep01(t))
 
@@ -575,7 +601,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                             val cloudScreenY = cloudWorldY - cameraY
 
                             val start = Offset(
-                                x = cloudX + cloudW * 0.55f,
+                                x = cloudX + cloudW * 0.35f,
                                 y = cloudScreenY + cloudH * 0.85f
                             )
                             val end = Offset(
@@ -589,7 +615,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     StormPhase.LIGHTNING_STRIKE -> {
                         cameraY = cutsceneCamToY
 
-                        val strikeDur = 0.32f
+                        val strikeDur = 0.32f//блискавка
                         val t = (stormPhaseTime / strikeDur).coerceIn(0f, 1f)
 
                         // блискавка + спалах згасають
@@ -607,7 +633,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     StormPhase.FADE_TO_STORM -> {
                         cameraY = cutsceneCamToY
 
-                        val fadeDur = 1.05f
+                        val fadeDur = 1.05f//кросфейд на бурю
                         val t = (stormPhaseTime / fadeDur).coerceIn(0f, 1f)
                         stormFadeAlpha = smoothStep01(t)
 
@@ -615,9 +641,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                             // ✅ тут ми "вмикаємо бурю" назавжди для цього рівня
                             stormApplied = true
 
-                            // прибираємо оверлей (бо тепер підкладка теж BG4)
-                            stormFadeAlpha = 0f
-                            cloudVisible = false
+                            stormFadeAlpha = smoothStep01(t)
                             lightningPoints = emptyList()
 
                             stormPhase = StormPhase.PAN_BACK_TO_PLAYER
@@ -626,7 +650,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     }
 
                     StormPhase.PAN_BACK_TO_PLAYER -> {
-                        val dur = 0.90f
+                        val dur = 0.90f//повернення камери
                         val t = (stormPhaseTime / dur).coerceIn(0f, 1f)
                         cameraY = lerp(cutsceneCamToY, cutsceneCamFromY, smoothStep01(t))
 
@@ -845,34 +869,90 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         // =====================================================
         // BACKGROUND
         // =====================================================
-            val tileH = screenH.coerceAtLeast(1f)
+        val tileH = screenH.coerceAtLeast(1f)
 
 
-            val blendPx = 280f
-            val overlapPx = 16f
-            val overscan = 1.25f//якщо змінити на більший то зміниться перехід(довший/коротший) між фонами різними
-            //не ставити менше 1.2f!!!
+        val blendPx = 280f
+        val overlapPx = 16f
+        val overscan = 1.25f//якщо змінити на більший то зміниться перехід(довший/коротший) між фонами різними
+        //не ставити менше 1.2f!!!
 
-            val baseTile = floor(cameraY / tileH).toInt()
-            val baseScreenY = (baseTile * tileH - cameraY)
-            val seamY = baseScreenY + tileH
+        val baseTile = floor(cameraY / tileH).toInt()
+        val baseScreenY = (baseTile * tileH - cameraY)
+        val seamY = baseScreenY + tileH
 
-            val topLevel = -baseTile
-            val bottomLevel = topLevel - 1
+        val topLevel = -baseTile
+        val bottomLevel = topLevel - 1
 
-            val topPainter = backgroundForLevel(topLevel)
-            val bottomPainter = backgroundForLevel(bottomLevel)
+        val topPainter = backgroundForLevel(topLevel)
+        val bottomPainter = backgroundForLevel(bottomLevel)
 
-            val topTy = baseScreenY + overlapPx
-            val seamLocal = seamY - topTy
+        val topTy = baseScreenY + overlapPx
+        val seamLocal = seamY - topTy
 
-            // BOTTOM (без маски)
+        // BOTTOM (без маски)
+        Image(
+            painter = bottomPainter,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationY = baseScreenY + tileH - overlapPx
+                    scaleX = overscan
+                    scaleY = overscan
+                },
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.BottomCenter
+        )
+
+        // TOP (з маскою — твій smoothing)
+        Image(
+            painter = topPainter,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationY = baseScreenY + overlapPx
+                    compositingStrategy = CompositingStrategy.Offscreen
+                    scaleX = overscan
+                    scaleY = overscan
+                }
+                .drawWithContent {
+                    drawContent()
+
+                    val h = size.height
+                    val y0 = (seamLocal - blendPx / 2f).coerceIn(0f, h)
+                    val y1 = (seamLocal + blendPx / 2f).coerceIn(0f, h)
+                    val p0 = (y0 / h).coerceIn(0f, 1f)
+                    val p1 = (y1 / h).coerceIn(0f, 1f)
+
+                    val mask = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.White,
+                            p0 to Color.White,
+                            p1 to Color.Transparent,
+                            1f to Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = h
+                    )
+
+                    drawRect(brush = mask, blendMode = BlendMode.DstIn)
+                }
+            ,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.BottomCenter
+        )
+
+        // Storm Overlay
+        if (stormFadeAlpha > 0f) {
             Image(
-                painter = bottomPainter,
+                painter = stormBg4Painter,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
+                        alpha = stormFadeAlpha
                         translationY = baseScreenY + tileH - overlapPx
                         scaleX = overscan
                         scaleY = overscan
@@ -881,13 +961,13 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 alignment = Alignment.BottomCenter
             )
 
-            // TOP (з маскою — твій smoothing)
             Image(
-                painter = topPainter,
+                painter = stormBg4Painter,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
+                        alpha = stormFadeAlpha
                         translationY = baseScreenY + overlapPx
                         compositingStrategy = CompositingStrategy.Offscreen
                         scaleX = overscan
@@ -919,68 +999,12 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.BottomCenter
             )
-
-            // Storm Overlay
-            if (stormFadeAlpha > 0f) {
-                Image(
-                    painter = stormBg4Painter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = stormFadeAlpha
-                            translationY = baseScreenY + tileH - overlapPx
-                            scaleX = overscan
-                            scaleY = overscan
-                        },
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.BottomCenter
-                )
-
-                Image(
-                    painter = stormBg4Painter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = stormFadeAlpha
-                            translationY = baseScreenY + overlapPx
-                            compositingStrategy = CompositingStrategy.Offscreen
-                            scaleX = overscan
-                            scaleY = overscan
-                        }
-                        .drawWithContent {
-                            drawContent()
-
-                            val h = size.height
-                            val y0 = (seamLocal - blendPx / 2f).coerceIn(0f, h)
-                            val y1 = (seamLocal + blendPx / 2f).coerceIn(0f, h)
-                            val p0 = (y0 / h).coerceIn(0f, 1f)
-                            val p1 = (y1 / h).coerceIn(0f, 1f)
-
-                            val mask = Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0f to Color.White,
-                                    p0 to Color.White,
-                                    p1 to Color.Transparent,
-                                    1f to Color.Transparent
-                                ),
-                                startY = 0f,
-                                endY = h
-                            )
-
-                            drawRect(brush = mask, blendMode = BlendMode.DstIn)
-                        }
-                    ,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.BottomCenter
-                )
-            }
+        }
 
         // =====================================================
         // CLOUD
         // =====================================================
-        if (cloudVisible) {
+        if (cloudVisible && cloudAlpha > 0f) {
             val tileH = screenH.coerceAtLeast(1f)
             val cloudW = cloudWidthPx()
             val cloudH = cloudHeightPx()
@@ -994,6 +1018,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     contentDescription = null,
                     modifier = Modifier
                         .offset { IntOffset(cloudX.roundToInt(), cloudScreenY.roundToInt()) }
+                        .graphicsLayer(alpha = cloudAlpha)
                         .size(blackCloudSpecs[0].wDp, blackCloudSpecs[0].hDp),
                     contentScale = ContentScale.FillBounds
                 )
@@ -1064,6 +1089,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     lightningAlpha = 0f
                     lightningPoints = emptyList()
                     cloudVisible = false
+                    cloudAlphaTarget = 0f
                     cutsceneCamFromY = 0f
                     cutsceneCamToY = 0f
 
@@ -1157,6 +1183,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     lightningAlpha = 0f
                     lightningPoints = emptyList()
                     cloudVisible = false
+                    cloudAlphaTarget = 0f
                     cutsceneCamFromY = 0f
                     cutsceneCamToY = 0f
 
@@ -1206,6 +1233,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     lightningAlpha = 0f
                     lightningPoints = emptyList()
                     cloudVisible = false
+                    cloudAlphaTarget = 0f
                     cutsceneCamFromY = 0f
                     cutsceneCamToY = 0f
 
