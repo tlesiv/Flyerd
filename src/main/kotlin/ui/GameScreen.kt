@@ -285,6 +285,9 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         return layouts[(level - 1) % layouts.size]
     }
 
+    var minCameraYReached by remember { mutableStateOf(0f) } // найбільш "висока" камера (найменше значення)
+    var cameraLocked by remember { mutableStateOf(false) }
+
     val buttonColor = Color(0xFF586316)
     val baseBackgroundColor = Color(0xFF0B1020)
 
@@ -661,32 +664,59 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
             birdX = birdX.coerceIn(0f, screenW - birdSizePx)
 
-            if (birdWorldY > groundWorldY) {
+            if (!cameraLocked && birdWorldY > groundWorldY) {
                 birdWorldY = groundWorldY
                 speedY = 0f
             }
 
             recomputeBirdScreenY()
 
+
+// камера підтягується вгору
             if (birdScreenY < topLockY) {
                 val diff = topLockY - birdScreenY
                 cameraY -= diff
                 recomputeBirdScreenY()
             }
 
-            if (birdScreenY > bottomLockY) {
-                val diff = birdScreenY - bottomLockY
-                cameraY += diff
-                recomputeBirdScreenY()
+// лочимо вниз з моменту level2
+            val lockAtLevel = 2
+            val noting = -floor(cameraY / tileH).toInt()
+            if (!cameraLocked && noting >= lockAtLevel) {
+                cameraLocked = true
+                minCameraYReached = cameraY
             }
 
-            if (cameraY > 0f) {
-                cameraY = 0f
+            if (cameraLocked) {
+                minCameraYReached = min(minCameraYReached, cameraY)
+                cameraY = min(cameraY, minCameraYReached)
                 recomputeBirdScreenY()
+
+                if (birdScreenY > screenH + 60f) {
+                    gameOver = true
+                    started = false
+                    speedX = 0f
+                    speedY = 0f
+                    leftHeld = false
+                    rightHeld = false
+                }
+            } else {
+                // до level2: можна падати і камера може вертатись вниз
+                if (birdScreenY > bottomLockY) {
+                    val diff = birdScreenY - bottomLockY
+                    cameraY += diff
+                    recomputeBirdScreenY()
+                }
+                if (cameraY > 0f) {
+                    cameraY = 0f
+                    recomputeBirdScreenY()
+                }
             }
+
+            recomputeBirdScreenY()
 
             val topVisibleLevel = -floor(cameraY / tileH).toInt()
-            // Якщо гравець піднявся до 5 рівня — він переміг
+            // Якщо гравець піднявся до 11 рівня — він переміг
             if (topVisibleLevel >= 11) {
                 gameWon = true
                 started = false
@@ -1038,6 +1068,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     birdX = screenW / 2f
                     birdWorldY = screenH * 0.65f
                     cameraY = 0f
+                    minCameraYReached = 0f
+                    cameraLocked = false
                     speedX = 0f
                     speedY = 0f
                     flyFrames = 0
@@ -1129,6 +1161,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     birdX = screenW / 2f
                     birdWorldY = screenH * 0.65f
                     cameraY = 0f
+                    minCameraYReached = 0f
+                    cameraLocked = false
                     speedX = 0f
                     speedY = 0f
                     flyFrames = 0
@@ -1176,6 +1210,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     birdX = screenW / 2f
                     birdWorldY = screenH * 0.65f
                     cameraY = 0f
+                    minCameraYReached = 0f
+                    cameraLocked = false
                     speedX = 0f
                     speedY = 0f
                     flyFrames = 0
