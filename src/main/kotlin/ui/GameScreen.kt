@@ -840,6 +840,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
             }
             .focusable()
     ) {
+
+
         // =====================================================
         // BACKGROUND
         // =====================================================
@@ -1299,6 +1301,47 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     .background(Color.White.copy(alpha = flashAlpha))
             )
         }
+        val tileHDev = screenH.coerceAtLeast(1f)
+        val devLevelNow = -floor(cameraY / tileHDev).toInt()
+
+        if(!started) {
+            DevToolsOverlay(
+                levelNow = devLevelNow,
+                cameraLocked = cameraLocked,
+                buttonColor = buttonColor,
+                onPlayFromLevel = { lvl ->
+                    gameOver = false
+                    gameWon = false
+
+                    val h = screenH.coerceAtLeast(1f)
+                    cameraY = -lvl * h
+                    minCameraYReached = cameraY
+                    cameraLocked = (lvl >= 3)
+
+                    birdX = screenW / 2f
+                    birdWorldY = (-lvl * h) + h * 0.80f//Менше число = вище, більше = нижче
+                    speedX = 0f
+                    speedY = 0f
+                    flyFrames = 0
+                    facingLeft = false
+                    leftHeld = false
+                    rightHeld = false
+
+                    obstacles = emptyList()
+                    nextObstacleId = 1
+                    spawnedTiles.clear()
+
+                    recomputeBirdScreenY()
+                    started = true
+                    focusRequester.requestFocus()
+
+                    stormApplied = false
+                    stormCutsceneDone = false
+                }
+
+            )
+        }
+
     }
 }
 
