@@ -76,7 +76,7 @@ fun main() = application {
 
             // скіни (поки просто “наступний”)
             skinIndex = skinIndex,
-            onSkinClick = { skinIndex = (skinIndex + 1) % skinsCount }
+            onSkinSelected = {skinIndex = it}
         )
     }
 }

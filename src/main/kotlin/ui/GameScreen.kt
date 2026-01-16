@@ -46,6 +46,16 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.random.Random
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import kotlinx.coroutines.sync.Mutex
 
 // =====================================================
 // Storm cutscene (cloud → lightning → smooth background switch)
@@ -182,10 +192,12 @@ data class CloudSpec(
 
 
 @Composable
-fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Unit, onTreeDoubleClick: () -> Unit, skinIndex: Int, onSkinClick: () -> Unit) {
+fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Unit, onTreeDoubleClick: () -> Unit, skinIndex: Int, onSkinSelected: (Int) -> Unit) {
     var started by remember { mutableStateOf(false) }
     var gameOver by remember { mutableStateOf(false) }
     var gameWon by remember { mutableStateOf(false) }
+
+
 
     // =====================================================
     // Storm cutscene state (cloud → lightning → smooth BG3→BG4)
@@ -220,6 +232,14 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
     val derevco = painterResource("images/derevco.svg")
 
+    var skinsOpen by remember { mutableStateOf(false) }
+
+// прев’ю для гріду (можеш додати більше)
+    val skinPreviews = listOf(
+        birdRight,                 // 0: стандартна пташка (прев’ю)
+        derevco,                   // 1
+        painterResource("images/ura.svg") // 2
+    )
     // --- Branches ---
     val branch1 = painterResource("images/branch1.svg")
     val branch2 = painterResource("images/branch2.svg")
@@ -1118,32 +1138,85 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp)
             ) { Text("Play", color = Color.White) }
         }
+
         // =====================================================
         // SKINS BUTTON
         // =====================================================
         if (!started) {
-            Button(
-                onClick = onSkinClick,
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(buttonColor),
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 60.dp)
-                    .size(45.dp),
-            ) {
-                Image(
-                    painterResource("images/icon_of_skins.svg"),
-                    contentDescription = null,
-                    Modifier.size(35.dp).padding(end = 2.dp)
+            // клік по фону закриває панель
+            if (skinsOpen) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { skinsOpen = false }
                 )
             }
 
-            val musicIcon = if(!musicEnabled) {
-                painterResource("/images/music_icon_off.svg")
-            }else {
-                painterResource("/images/music_icon.svg")
+            // Правий нижній кут: панель над кнопкою
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 60.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+
+                AnimatedVisibility(
+                    visible = skinsOpen,
+                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(210.dp)
+                            .heightIn(max = 240.dp)
+                            .background(Color(0xCC0B1020), RoundedCornerShape(18.dp))
+                            .padding(10.dp)
+                    ) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            itemsIndexed(skinPreviews) { idx, preview ->
+                                SkinTile(
+                                    selected = (idx == skinIndex),
+                                    onClick = {
+                                        onSkinSelected(idx)
+                                        skinsOpen = false
+                                    }
+                                ) {
+                                    Image(
+                                        painter = preview,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(44.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // сама кнопка скінів (тепер відкриває/закриває меню)
+                Button(
+                    onClick = { skinsOpen = !skinsOpen },
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(buttonColor),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.size(45.dp),
+                ) {
+                    Image(
+                        painterResource("images/icon_of_skins.svg"),
+                        contentDescription = null,
+                        Modifier.size(35.dp).padding(end = 2.dp)
+                    )
+                }
             }
+
             // =====================================================
             // MUSIC
             // =====================================================
@@ -1158,7 +1231,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     .size(45.dp),
             ) {
                 Image(
-                    painter = musicIcon,
+                    painter = painterResource("/images/music_icon.svg"),//////
                     contentDescription = null,
                     Modifier.size(28.dp)
                 )
