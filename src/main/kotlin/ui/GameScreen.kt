@@ -55,7 +55,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import kotlinx.coroutines.sync.Mutex
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.ButtonDefaults.elevation
+import androidx.compose.ui.draw.alpha
 
 // =====================================================
 // Storm cutscene (cloud → lightning → smooth background switch)
@@ -317,7 +319,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     var minCameraYReached by remember { mutableStateOf(0f) } // найбільш "висока" камера (найменше значення)
     var cameraLocked by remember { mutableStateOf(false) }
 
-    val buttonColor = Color(0xFF586316)
+    val buttonColor = Color(0xFF1A1F2E).copy(alpha = 0.5f)
     val baseBackgroundColor = Color(0xFF0B1020)
 
     // --- Screen (px) ---
@@ -1172,7 +1174,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                         modifier = Modifier
                             .width(210.dp)
                             .heightIn(max = 240.dp)
-                            .background(Color(0xCC0B1020), RoundedCornerShape(18.dp))
+                            .background(color = buttonColor.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
                             .padding(10.dp)
                     ) {
                         LazyVerticalGrid(
@@ -1201,12 +1203,13 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
                 Spacer(Modifier.height(10.dp))
 
-                // сама кнопка скінів (тепер відкриває/закриває меню)
+                // сама кнопка скінів
                 Button(
                     onClick = { skinsOpen = !skinsOpen },
                     contentPadding = PaddingValues(0.dp),
                     colors = ButtonDefaults.buttonColors(buttonColor),
-                    shape = RoundedCornerShape(24.dp),
+                    elevation = elevation(0.dp,0.dp,0.dp, 0.dp, 0.dp),//Прибираємо тіні
+                    shape = CircleShape,
                     modifier = Modifier.size(45.dp),
                 ) {
                     Image(
@@ -1224,6 +1227,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 onClick = onMusicClick,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(buttonColor),
+                elevation = elevation(0.dp, 0.dp, 0.dp, 0.dp),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -1231,7 +1235,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     .size(45.dp),
             ) {
                 Image(
-                    painter = painterResource("/images/music_icon.svg"),//////
+                    painter = painterResource("/images/music_icon.svg"),
                     contentDescription = null,
                     Modifier.size(28.dp)
                 )
@@ -1281,6 +1285,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     focusRequester.requestFocus()
                 },
                 colors = ButtonDefaults.buttonColors(backgroundColor = buttonColor),
+                elevation = elevation(0.dp, 0.dp, 0.dp, 0.7.dp),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.align(Alignment.Center)
             ) { Text("Restart", color = Color.White) }
@@ -1326,6 +1331,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     focusRequester.requestFocus()
                 },
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF4CAF50)), // Зелений для перемоги
+                elevation = elevation(0.dp, 0.dp, 0.dp, 0.7.dp),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.align(Alignment.Center)
             ) {

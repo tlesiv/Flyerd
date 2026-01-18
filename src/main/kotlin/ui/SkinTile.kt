@@ -66,7 +66,7 @@ fun SkinTile(
                 onExit = { hovered = false; false }
             )
             .clip(shape)
-            .background(if (selected) Color(0xFF1F2A16) else Color(0xFF1A1F2E))
+            .background(if (selected) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f))
             .drawBehind {
                 val stroke = 2.dp.toPx()
 
@@ -98,7 +98,6 @@ fun SkinTile(
                     )
                 }
 
-                // ✅ hovered — той самий "перелив" як у першому варіанті
                 if (hovered) {
                     drawRoundRect(
                         brush = shineBrush,

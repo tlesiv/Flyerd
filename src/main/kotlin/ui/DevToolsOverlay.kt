@@ -44,6 +44,7 @@ private fun DevBtn(text: String, buttonColor: Color, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(backgroundColor = buttonColor),
+        elevation = ButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
         shape = RoundedCornerShape(10.dp),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
     ) { Text(text, color = Color.White) }
