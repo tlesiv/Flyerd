@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun BoxScope.DevToolsOverlay(
     levelNow: Int,
-    cameraLocked: Boolean,
     buttonColor: Color,
     onPlayFromLevel: (Int) -> Unit,
 ) {
@@ -33,6 +32,8 @@ fun BoxScope.DevToolsOverlay(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DevBtn("Play BG2", buttonColor) { onPlayFromLevel(3) }
             DevBtn("Play BG3", buttonColor) { onPlayFromLevel(6) }
+            DevBtn("Play BG4_1", buttonColor) {onPlayFromLevel(7)}
+            DevBtn("Play BG4_2", buttonColor) {onPlayFromLevel(8)}
         }
     }
 }

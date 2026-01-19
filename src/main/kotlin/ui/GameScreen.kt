@@ -57,6 +57,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ButtonDefaults.elevation
+import kotlin.math.abs
 
 // =====================================================
 // Storm cutscene (cloud → lightning → smooth background switch)
@@ -167,29 +168,50 @@ data class Obstacle(
     val id: Int,
     val xPx: Float,
     val worldYPx: Float,
-    val kind: Int // index in branchSpecs
+    val kind: Int, // index in branchSpecs
+    val isWind: Boolean,
+
+    // --- enter animation (використовуємо тільки для wind) ---
+    val targetXPx: Float = xPx,      // фінальний X (той, що ти порахував у layout)
+    val spawnFromXPx: Float = xPx,   // стартовий X (за екраном)
+    val enterT: Float = 1f,          // 0..1
+    val enterDurSec: Float = 0f,     // тривалість “вльоту”
+    val enterStarted: Boolean = true // стартувати не одразу (бо спавниш на тайл наперед)
 )
 
 enum class XAnchor { LEFT, RIGHT, CENTER }
 
-data class BranchSpawn(
+data class ObstacleSpawn(
     val anchor: XAnchor,
     val yFrac: Float,
+    val xFrac: Float,
     val kind: Int,
+    val isWind : Boolean = false,
     val xOffsetPx: Float = 0f
 )
+interface IObstacleSpec {
+    val painter: Painter
+    val wDp: Dp
+    val hDp: Dp
+}
 
-// ✅ NEW: per-branch draw size (fixes squished SVGs while keeping FillBounds + masks)
 data class BranchSpec(
+    override val painter: Painter,
+    override val wDp: Dp,
+    override val hDp: Dp
+) : IObstacleSpec
+
+data class BlackCloudSpec(
     val painter: Painter,
     val wDp: Dp,
     val hDp: Dp
 )
-data class CloudSpec(
-    val painter: Painter,
-    val wDp: Dp,
-    val hDp: Dp
-)
+
+data class WindSpec(
+    override val painter: Painter,
+    override val wDp: Dp,
+    override val hDp: Dp
+) : IObstacleSpec
 
 
 @Composable
@@ -197,8 +219,6 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     var started by remember { mutableStateOf(false) }
     var gameOver by remember { mutableStateOf(false) }
     var gameWon by remember { mutableStateOf(false) }
-
-
 
     // =====================================================
     // Storm cutscene state (cloud → lightning → smooth BG3→BG4)
@@ -235,7 +255,6 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
     var skinsOpen by remember { mutableStateOf(false) }
 
-// прев’ю для гріду (можеш додати більше)
     val skinPreviews = listOf(
         birdRight,                 // 0: стандартна пташка (прев’ю)
         derevco,                   // 1
@@ -257,6 +276,20 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     val branch13 = painterResource("images/branch13.svg")
 
     val blackCloud = painterResource("images/black_cloud.svg")
+
+    val windBG1_1 = painterResource("images/windBG1_1.svg")
+    val windBG1_2 = painterResource("images/windBG1_2.svg")
+    val windBG1_3 = painterResource("images/windBG1_3.svg")
+    val windBG1_4 = painterResource("images/windBG1_4.svg")
+    val windBG1_5 = painterResource("images/windBG1_5.svg")
+    val windBG2_1 = painterResource("images/windBG2_1.svg")
+    val windBG2_2 = painterResource("images/windBG2_2.svg")
+    val windBG2_3 = painterResource("images/windBG2_3.svg")
+    val windBG2_4 = painterResource("images/windBG2_4.svg")
+    val windBG2_5 = painterResource("images/windBG2_5.svg")
+    val windBG2_6 = painterResource("images/windBG2_6.svg")
+
+
 
     // --- Backgrounds
     val backgrounds = listOf(
@@ -284,35 +317,58 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
     // --- Layouts ---
     val layoutLevel1 = listOf(
-        BranchSpawn(XAnchor.RIGHT, 0.08f, kind = 0),
-        BranchSpawn(XAnchor.LEFT, 0.30f, kind = 1),
-        BranchSpawn(XAnchor.RIGHT, 0.55f, kind = 2),
-        BranchSpawn(XAnchor.LEFT, 0.73f, kind = 3)
+        ObstacleSpawn(XAnchor.RIGHT, 0.08f,0f, kind = 0),
+        ObstacleSpawn(XAnchor.LEFT, 0.30f, 0f, kind = 1),
+        ObstacleSpawn(XAnchor.RIGHT, 0.55f, 0f, kind = 2),
+        ObstacleSpawn(XAnchor.LEFT, 0.73f, 0f, kind = 3)
     )
 
     val layoutLevel2 = listOf(
-        BranchSpawn(XAnchor.RIGHT, 0.29f, kind = 5),
-        BranchSpawn(XAnchor.LEFT, 0.44f, kind = 4)
+        ObstacleSpawn(XAnchor.RIGHT, 0.29f,0f,  kind = 5),
+        ObstacleSpawn(XAnchor.LEFT, 0.44f, 0f, kind = 4)
     )
 
     val layoutLevel3 = listOf(
-        BranchSpawn(XAnchor.RIGHT, 0.22f, kind = 12),
-        BranchSpawn(XAnchor.LEFT, 0.35f, kind = 11),
-        BranchSpawn(XAnchor.LEFT, 0.68f, kind = 10)
+        ObstacleSpawn(XAnchor.RIGHT, 0.22f, 0f, kind = 12),
+        ObstacleSpawn(XAnchor.LEFT, 0.35f, 0f, kind = 11),
+        ObstacleSpawn(XAnchor.LEFT, 0.68f, 0f, kind = 10)
     )
 
     val layoutLevel4 = listOf(
-        BranchSpawn(XAnchor.RIGHT, 0.04f, kind = 8),
-        BranchSpawn(XAnchor.LEFT, 0.20f, kind = 9),
-        BranchSpawn(XAnchor.LEFT, 0.55f, kind = 7),
-        BranchSpawn(XAnchor.RIGHT, 0.60f, kind = 6)
+        ObstacleSpawn(XAnchor.RIGHT, 0.04f, 0f, kind = 8),
+        ObstacleSpawn(XAnchor.LEFT, 0.20f, 0f, kind = 9),
+        ObstacleSpawn(XAnchor.LEFT, 0.55f, 0f, kind = 7),
+        ObstacleSpawn(XAnchor.RIGHT, 0.60f, 0f, kind = 6)
+    )
+    //WINDS
+    val layoutLevel5 = listOf(
+        ObstacleSpawn(XAnchor.RIGHT, 0.72f,0.70f,  kind = 0, isWind = true),
+        ObstacleSpawn(XAnchor.RIGHT, 0.67f, 0.90f, kind = 1, isWind = true),
+        ObstacleSpawn(XAnchor.LEFT, 0.45f, 0.1f, kind = 2, isWind = true),
+        ObstacleSpawn(XAnchor.LEFT, 0.30f, 0.45f, kind = 3, isWind = true),
+        ObstacleSpawn(XAnchor.RIGHT, 0.15f, 0f, kind = 4, isWind = true)
+    )
+    val layoutLevel6 = listOf(
+        ObstacleSpawn(XAnchor.LEFT, 0.72f,0.05f,  kind = 5, isWind = true),
+        ObstacleSpawn(XAnchor.RIGHT, 0.57f, 0.90f, kind = 6, isWind = true),
+        ObstacleSpawn(XAnchor.LEFT, 0.40f, 0.90f, kind = 7, isWind = true),
+        ObstacleSpawn(XAnchor.RIGHT, 0.30f, 0.45f, kind = 8, isWind = true),
+        ObstacleSpawn(XAnchor.LEFT, 0.15f, 0f, kind = 9, isWind = true),
+        ObstacleSpawn(XAnchor.RIGHT, 0.10f, 0f, 10, isWind = true)
     )
 
-    val layouts = listOf(layoutLevel1, layoutLevel2, layoutLevel3, layoutLevel4)
+    fun layoutForLevel(level: Int): List<ObstacleSpawn> {
+        return when(level){
+            1 -> layoutLevel1
+            2 -> layoutLevel2
+            3 -> layoutLevel3
+            4 -> layoutLevel4
+            5 -> layoutLevel2
+            7 -> layoutLevel5
+            8 -> layoutLevel6
 
-    fun layoutForLevel(level: Int): List<BranchSpawn> {
-        if (level <= 0 || level >= 5) return emptyList()
-        return layouts[(level - 1) % layouts.size]
+            else -> emptyList()
+        }
     }
 
     var minCameraYReached by remember { mutableStateOf(0f) } // найбільш "висока" камера (найменше значення)
@@ -336,6 +392,9 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     val baseBranchWdp = 240.dp
     val baseBranchHdp = 100.dp
 
+    val baseWindWdp = 140.dp
+    val baseWindHdp = 75.dp
+
     // ✅ PER-BRANCH sizes (fix squish only for the problematic ones)
     // FIX HERE: put bigger width/height for the 2 squished branches.
     val branchSpecs = listOf(
@@ -356,12 +415,30 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         BranchSpec(branch13, baseBranchWdp, baseBranchHdp),  // kind 12
     )
     val blackCloudSpecs = listOf(
-        CloudSpec(blackCloud, 150.dp, 100.dp)
+        BlackCloudSpec(blackCloud, 150.dp, 100.dp)
+    )
+
+    val windSpecs = listOf(
+        WindSpec(windBG1_1, 230.dp, baseWindHdp),
+        WindSpec(windBG1_2, baseWindWdp, baseWindHdp),
+        WindSpec(windBG1_3, 210.dp, baseWindHdp),
+        WindSpec(windBG1_4, baseWindWdp, baseWindHdp),
+        WindSpec(windBG1_5, baseWindWdp, baseWindHdp),
+
+        WindSpec(windBG2_1, baseWindWdp, baseWindHdp),
+        WindSpec(windBG2_2, baseWindWdp, baseWindHdp),
+        WindSpec(windBG2_3, baseWindWdp, baseWindHdp),
+        WindSpec(windBG2_4, baseWindWdp, baseWindHdp),
+        WindSpec(windBG2_5, baseWindWdp, baseWindHdp),
+        WindSpec(windBG2_6, baseWindWdp, baseWindHdp),
     )
 
     // ✅ helper: per-kind px sizes
     fun branchWidthPx(kind: Int): Float = with(density) { branchSpecs[kind].wDp.toPx() }
     fun branchHeightPx(kind: Int): Float = with(density) { branchSpecs[kind].hDp.toPx() }
+
+    fun windWidthPx(kind: Int): Float = with(density) { windSpecs[kind].wDp.toPx() }
+    fun windHeightPx(kind: Int): Float = with(density) { windSpecs[kind].hDp.toPx() }
 
     // ✅ helper: cloud size in px
     fun cloudWidthPx(): Float = with(density) { blackCloudSpecs[0].wDp.toPx() }
@@ -383,6 +460,12 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
     // ✅ Branch masks per branchSpec size (IMPORTANT)
     val branchMasks = branchSpecs.map { spec ->
+        val wPxInt = with(density) { spec.wDp.toPx() }.roundToInt().coerceAtLeast(1)
+        val hPxInt = with(density) { spec.hDp.toPx() }.roundToInt().coerceAtLeast(1)
+        rememberAlphaMask(spec.painter, wPxInt, hPxInt, alphaCutoff)
+    }
+
+    val windMasks = windSpecs.map { spec ->
         val wPxInt = with(density) { spec.wDp.toPx() }.roundToInt().coerceAtLeast(1)
         val hPxInt = with(density) { spec.hDp.toPx() }.roundToInt().coerceAtLeast(1)
         rememberAlphaMask(spec.painter, wPxInt, hPxInt, alphaCutoff)
@@ -450,6 +533,8 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     var obstacles by remember { mutableStateOf(listOf<Obstacle>()) }
     var nextObstacleId by remember { mutableStateOf(1) }
     val spawnedTiles = remember { mutableSetOf<Int>() }
+    var activeWindId by remember { mutableStateOf<Int?>(null) }
+
 
     fun modIndex(i: Int, size: Int): Int {
         if (size <= 0) return 0
@@ -482,36 +567,84 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
     }
 
     // ✅ spawn: X uses per-branch width (IMPORTANT)
-    fun spawnBranchesForLevel(level: Int, tileH: Float) {
+    fun spawnObstaclesForLevel(level: Int, tileH: Float) {
         val topWorldY = -level * tileH
 
         val margin = 12f
         val xLeft = -margin
 
         for (s in layoutForLevel(level)) {
-            val kind = s.kind.coerceIn(0, branchSpecs.lastIndex)
-            val wPx = branchWidthPx(kind)
+            val kind = if(s.isWind) {
+                s.kind.coerceIn(0, windSpecs.lastIndex)
+            }else{
+                s.kind.coerceIn(0, branchSpecs.lastIndex)
+            }
+            val wPx = if (s.isWind) windWidthPx(kind) else branchWidthPx(kind)
 
             val xRight = screenW - wPx + margin
             val xCenter = (screenW - wPx) / 2f
 
-            val x = when (s.anchor) {
-                XAnchor.LEFT -> xLeft + s.xOffsetPx
-                XAnchor.RIGHT -> xRight + s.xOffsetPx
-                XAnchor.CENTER -> xCenter + s.xOffsetPx
+            val targetX: Float = if (s.xFrac != 0f) {
+                (screenW - wPx) * s.xFrac + s.xOffsetPx
+            } else {
+                when (s.anchor) {
+                    XAnchor.LEFT -> xLeft + s.xOffsetPx
+                    XAnchor.RIGHT -> xRight + s.xOffsetPx
+                    XAnchor.CENTER -> xCenter + s.xOffsetPx
+                }
             }
+
 
             val yFrac = s.yFrac.coerceIn(0.02f, 0.98f)
             val worldY = topWorldY + tileH * yFrac
 
-            obstacles = obstacles + Obstacle(
-                id = nextObstacleId++,
-                xPx = x,
-                worldYPx = worldY,
-                kind = kind
-            )
+            if (s.isWind) {
+                // стартуємо з того боку, де фінальна позиція ближче (не перелітаємо через весь екран)
+                val startX = when (s.anchor) {
+                    XAnchor.RIGHT -> screenW + 80f    // вітер "дує вправо" → прилітає зліва
+                    XAnchor.LEFT  -> -wPx - 80f     // вітер "дує вліво"  → прилітає справа
+                    XAnchor.CENTER -> if (targetX + wPx * 0.5f < screenW * 0.5f) {
+                        -wPx - 80f
+                    } else {
+                        screenW + 80f
+                    }
+                }
+
+
+                // щоб “не випереджав гравця”: обмежуємо швидкість входу
+                // (у тебе sideSpeed = 700f, тому тут ставимо менше)
+                val windMaxSpeedPxPerSec = 480f
+
+                // ми будемо використовувати smoothStep01(t). В нього max slope ≈ 1.5,
+                // тож щоб реальна швидкість не перевищувала windMaxSpeed, множимо dur на 1.5
+                val dist = abs(targetX - startX)
+                val dur = (dist * 1.5f / windMaxSpeedPxPerSec).coerceIn(0.45f, 1.25f)
+
+
+                obstacles = obstacles + Obstacle(
+                    id = nextObstacleId++,
+                    xPx = startX,
+                    worldYPx = worldY,
+                    kind = kind,
+                    isWind = true,
+                    targetXPx = targetX,
+                    spawnFromXPx = startX,
+                    enterT = 0f,
+                    enterDurSec = dur,
+                    enterStarted = false
+                )
+            } else {
+                obstacles = obstacles + Obstacle(
+                    id = nextObstacleId++,
+                    xPx = targetX,
+                    worldYPx = worldY,
+                    kind = kind,
+                    isWind = false
+                )
+            }
         }
     }
+
 
     val focusRequester = remember { FocusRequester() }
 
@@ -699,6 +832,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 continue
             }
 
+
             engine.tick(dt)
 
             if (flyFrames > 0) flyFrames--
@@ -713,16 +847,75 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 birdWorldY = groundWorldY
                 speedY = 0f
             }
-
-            recomputeBirdScreenY()
-
-
 // камера підтягується вгору
             if (birdScreenY < topLockY) {
                 val diff = topLockY - birdScreenY
                 cameraY -= diff
                 recomputeBirdScreenY()
             }
+// -------------------------------------------------
+// Wind enter animation (ONE at a time)
+// -------------------------------------------------
+            val windPreEnterPx = 130f
+
+// 1) якщо активний вітер уже закінчився — звільняємо слот
+            activeWindId?.let { id ->
+                val stillRunning = obstacles.any { it.id == id && it.isWind && it.enterT < 1f }
+                if (!stillRunning) activeWindId = null
+            }
+
+// 2) якщо немає активного — запускаємо РІВНО ОДИН, який першим дійшов до "межі"
+            if (activeWindId == null) {
+                val next = obstacles
+                    .asSequence()
+                    .filter { it.isWind && it.enterT < 1f && !it.enterStarted }
+                    .mapNotNull { o ->
+                        val oScreenY = o.worldYPx - cameraY
+                        val hPx = windHeightPx(o.kind)
+                        if (oScreenY > -hPx - windPreEnterPx) o else null
+                    }
+                    .maxByOrNull { it.worldYPx } // найближчий до гравця (перший по порядку)
+
+                if (next != null) {
+                    activeWindId = next.id
+                    obstacles = obstacles.map { o ->
+                        if (o.id == next.id) o.copy(enterStarted = true) else o
+                    }
+                }
+            }
+
+// 3) анімуємо ТІЛЬКИ активний
+            val idToAnimate = activeWindId
+            if (idToAnimate != null) {
+                var changed = false
+
+                val updated = obstacles.map { o ->
+                    if (!o.isWind) return@map o
+                    if (o.id != idToAnimate) return@map o
+                    if (o.enterT >= 1f) return@map o
+                    if (!o.enterStarted) return@map o
+
+                    val dur = o.enterDurSec.coerceAtLeast(0.001f)
+                    val t = (o.enterT + dt / dur).coerceIn(0f, 1f)
+
+                    val eased = smoothStep01(t)
+                    val newX = lerp(o.spawnFromXPx, o.targetXPx, eased)
+
+                    changed = true
+                    o.copy(xPx = newX, enterT = t)
+                }
+
+                if (changed) obstacles = updated
+
+                // якщо доробив — чистимо activeWindId
+                val done = obstacles.firstOrNull { it.id == idToAnimate }?.enterT ?: 1f
+                if (done >= 1f) activeWindId = null
+            }
+
+
+            recomputeBirdScreenY()
+
+
 
 // лочимо вниз з моменту level2
             val lockAtLevel = 2
@@ -769,7 +962,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
             for (lvl in listOf(topVisibleLevel, topVisibleLevel + 1)) {
                 if (lvl >= 1 && spawnedTiles.add(lvl)) {
-                    spawnBranchesForLevel(lvl, tileH)
+                    spawnObstaclesForLevel(lvl, tileH)
                 }
             }
 
@@ -788,13 +981,13 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
 
             for (o in obstacles) {
                 val oScreenY = o.worldYPx - cameraY
-                val hPx = branchHeightPx(o.kind)
+                val hPx = if (o.isWind) windHeightPx(o.kind) else branchHeightPx(o.kind)
 
                 if (oScreenY > screenH + 250f || oScreenY + hPx < -250f) continue
 
                 val obsX = o.xPx.roundToInt()
                 val obsY = oScreenY.roundToInt()
-                val mask = branchMasks[o.kind]
+                val mask = if (o.isWind) windMasks[o.kind] else branchMasks[o.kind]
 
                 if (pixelPerfectCollision(
                         aX = birdDrawX, aY = birdDrawY, aMask = birdMask,
@@ -1074,19 +1267,22 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         }
         // =====================================================
         // BRANCHES
-        // =====================================================
+        // ====================================================
+
         for (o in obstacles) {
             val oScreenY = o.worldYPx - cameraY
-            val hPx = branchHeightPx(o.kind)
+            val hPx = if (o.isWind) windHeightPx(o.kind) else branchHeightPx(o.kind)
             if (oScreenY > screenH + 250f || oScreenY + hPx < -250f) continue
 
-            val spec = branchSpecs[o.kind]
+            val spec = if (o.isWind) windSpecs[o.kind] else branchSpecs[o.kind]
+            val alpha = if (o.isWind) smoothStep01(o.enterT) else 1f
             Image(
                 painter = spec.painter,
                 contentDescription = null,
                 modifier = Modifier
                     .offset { IntOffset(o.xPx.roundToInt(), oScreenY.roundToInt()) }
-                    .size(spec.wDp, spec.hDp),
+                    .size(spec.wDp, spec.hDp)
+                    .graphicsLayer{this.alpha = alpha},
                 contentScale = ContentScale.FillBounds
             )
         }
@@ -1414,7 +1610,6 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
         if(!started) {
             DevToolsOverlay(
                 levelNow = devLevelNow,
-                cameraLocked = cameraLocked,
                 buttonColor = buttonColor,
                 onPlayFromLevel = { lvl ->
                     gameOver = false
@@ -1426,7 +1621,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     cameraLocked = (lvl >= 3)
 
                     birdX = screenW / 2f
-                    birdWorldY = (-lvl * h) + h * 0.80f//Менше число = вище, більше = нижче
+                    birdWorldY = (-lvl * h) + h * 0.90f//Менше число = вище, більше = нижче
                     speedX = 0f
                     speedY = 0f
                     flyFrames = 0
