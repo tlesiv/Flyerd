@@ -29,10 +29,8 @@ fun BoxScope.DevToolsOverlay(
     ) {
         Text("DEV", color = Color.White)
         Text("level: $levelNow", color = Color.White)
-        Text("camLocked: $cameraLocked", color = Color.White)
 
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            DevBtn("Play BG1", buttonColor) { onPlayFromLevel(0) }
             DevBtn("Play BG2", buttonColor) { onPlayFromLevel(3) }
             DevBtn("Play BG3", buttonColor) { onPlayFromLevel(6) }
         }

@@ -57,7 +57,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ButtonDefaults.elevation
-import androidx.compose.ui.draw.alpha
 
 // =====================================================
 // Storm cutscene (cloud → lightning → smooth background switch)
@@ -1220,6 +1219,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 }
             }
 
+            val musicPainter = if(musicEnabled) painterResource("/images/music_icon.svg") else painterResource("/images/music_icon_off.svg")
             // =====================================================
             // MUSIC
             // =====================================================
@@ -1227,7 +1227,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                 onClick = onMusicClick,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(buttonColor),
-                elevation = elevation(0.dp, 0.dp, 0.dp, 0.dp),
+                elevation = elevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -1235,7 +1235,7 @@ fun GameScreen(engine: GameEngine, musicEnabled: Boolean, onMusicClick: () -> Un
                     .size(45.dp),
             ) {
                 Image(
-                    painter = painterResource("/images/music_icon.svg"),
+                    painter = musicPainter,
                     contentDescription = null,
                     Modifier.size(28.dp)
                 )
